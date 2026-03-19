@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="index.css">
+    <title>Bodhichitta</title>
+
+    <!-- Google Fonts: Inter for UI, Playfair Display for headings -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Playfair+Display:wght@400;700&display=swap"
+        rel="stylesheet">
+
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Header with brand and nav -->
+        <header>
+            <!-- <a class="brand" href="#">
+                <div>
+                    <div style="font-size:1rem;color:#9aa0a6; margin-top:2px">Natural · Clean · Effective</div>
+                </div>
+            </a> -->
+        </header>
+        <h1 class="site-heading">Bodhichitta</h1>
+
+        <nav aria-label="Main Navigation">
+            <a href="#products">Products</a>
+            <a href="#about">About</a>
+            <a href="#contact">Contact</a>
+            <a class="cta" href="#products">Shop</a>
+        </nav>
+
+        <!-- Hero / Banner section -->
+        <section class="hero" role="region" aria-label="Featured">
+            <div class="hero-content">
+                <!-- <div class="eyebrow">New Arrival</div> -->
+                <h2>Clean formulas that make your skin glow — ethically sourced, clinically tried.</h2>
+                <p class="lead">Discover lightweight serums and moisturizers that hydrate without heaviness. Formulated
+                    for sensitive skin and powered by botanicals.</p>
+                <div class="actions">
+                    <a class="btn primary" href="#products">Shop Bestsellers</a>
+                </div>
+            </div>
+
+            <div class="hero-visual" aria-hidden="true">
+                <img src="images/Blue Modern Travel Banner.png" alt="A styled arrangement of skincare products">
+            </div>
+        </section>
+
+        <!-- Products showcase -->
+        <section id="products" class="products" aria-label="Products">
+            <div class="products-header">
+                <div>
+                    <h3 style="margin:0; font-family:'Playfair Display', serif;">Our Favorites</h3>
+                    <div style="color:#6b7280; font-size:0.95rem; margin-top:6px">Handpicked for glowing, healthy skin
+                    </div>
+                </div>
+                <!-- <div style="color:#6b7280; font-size:0.95rem">Showing 5 products</div> -->
+            </div>
+
+            <div class="products-grid">
+
+                <!-- Product Card 1: includes small gallery + buy button -->
+                <article class="card" data-product-id="hydra-dew">
+                    <div class="gallery">
+                        <img class="main-img" src="images/Shampoo_1.jpg" alt="Hydra Dew Serum main image">
+                        <div class="thumbs" role="tablist" aria-label="Product images thumbnails">
+                            <button class="thumb active" data-src="images/Shampoo_2.jpg" aria-label="View image 1"><img
+                                    src="images/Shampoo_2.jpg" alt="thumbnail 1"></button>
+                            <button class="thumb" data-src="images/Shampoo_3.jpg" aria-label="View image 2"><img
+                                    src="images/Shampoo_3.jpg" alt="thumbnail 2"></button>
+                            <button class="thumb" data-src="images/Shampoo_4.jpg" aria-label="View image 3"><img
+                                    src="images/Shampoo_4.jpg" alt="thumbnail 3"></button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <h4 class="product-title">Rosemary and coconut milk shampoo</h4>
+                        <p class="product-desc">Lorem ipsum dolor, sit amet consectetur adipisicing elit. otar, velit
+                            saepe</p>
+
+                        <div class="buy-row">
+                            <!-- Replace href values with your product checkout URLs -->
+                            <a class="buy primary" href="https://example.com/buy?product=hydra-dew" target="_blank"
+                                rel="noopener">Buy Now</a>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Product Card 2 -->
+                <article class="card" data-product-id="velvet-day">
+                    <div class="gallery">
+                        <img class="main-img" src="images/Face Packs 100gm.png" alt="Velvet Day Moisturizer main image">
+                        <div class="thumbs" role="tablist" aria-label="Product images thumbnails">
+                            <button class="thumb active"
+                                data-src="https://images.unsplash.com/photo-1556228720-3b3d8f5a2a5a?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                aria-label="View image 1"><img
+                                    src="https://images.unsplash.com/photo-1556228720-3b3d8f5a2a5a?q=80&w=600&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                    alt="thumbnail 1"></button>
+                            <button class="thumb"
+                                data-src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                aria-label="View image 2"><img
+                                    src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=600&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                    alt="thumbnail 2"></button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <h4 class="product-title">Face masks</h4>
+                        <p class="product-desc">Lorem ipsum dolor, sit amet consectetur adipisicing elit. otar, velit
+                            saepe</p>
+
+                        <div class="buy-row">
+                            <a class="buy primary" href="https://example.com/buy?product=velvet-day" target="_blank"
+                                rel="noopener">Buy Now</a>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Product Card 3 -->
+                <article class="card" data-product-id="pure-balance">
+                    <div class="gallery">
+                        <img class="main-img" src="images/Essential oils.png" alt="Pure Balance Cleanser main image">
+                        <div class="thumbs" role="tablist" aria-label="Product images thumbnails">
+                            <button class="thumb active"
+                                data-src="https://images.unsplash.com/photo-1611162617218-46a1b3f0f0d5?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                aria-label="View image 1"><img
+                                    src="https://images.unsplash.com/photo-1611162617218-46a1b3f0f0d5?q=80&w=600&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                    alt="thumbnail 1"></button>
+                            <button class="thumb"
+                                data-src="https://images.unsplash.com/photo-1586821925276-8ec5a4d7f3d5?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                aria-label="View image 2"><img
+                                    src="https://images.unsplash.com/photo-1586821925276-8ec5a4d7f3d5?q=80&w=600&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                    alt="thumbnail 2"></button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <h4 class="product-title">Essential oils</h4>
+                        <p class="product-desc">Lorem ipsum dolor, sit amet consectetur adipisicing elit. otar, velit
+                            saepe</p>
+
+                        <div class="buy-row">
+                            <a class="buy primary" href="https://example.com/buy?product=pure-balance" target="_blank"
+                                rel="noopener">Buy Now</a>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Product Card 4 -->
+                <article class="card" data-product-id="botanical-bright">
+                    <div class="gallery">
+                        <img class="main-img" src="images/Shampoo_10.jpg" alt="Botanical Bright Oil main image">
+                        <div class="thumbs" role="tablist" aria-label="Product images thumbnails">
+                            <button class="thumb active"
+                                data-src="https://images.unsplash.com/photo-1563201518-6d0b6b5c7f32?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                aria-label="View image 1"><img
+                                    src="https://images.unsplash.com/photo-1563201518-6d0b6b5c7f32?q=80&w=600&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                    alt="thumbnail 1"></button>
+                            <button class="thumb"
+                                data-src="https://images.unsplash.com/photo-1511988617509-a57c8a288659?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                aria-label="View image 2"><img
+                                    src="https://images.unsplash.com/photo-1511988617509-a57c8a288659?q=80&w=600&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                    alt="thumbnail 2"></button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <h4 class="product-title">Hair oil</h4>
+                        <p class="product-desc">Lorem ipsum dolor, sit amet consectetur adipisicing elit. otar, velit
+                            saepe</p>
+
+                        <div class="buy-row">
+                            <a class="buy primary" href="https://example.com/buy?product=botanical-bright"
+                                target="_blank" rel="noopener">Buy Now</a>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Product Card 5 -->
+                <!-- <article class="card" data-product-id="calm-repair">
+                    <div class="gallery">
+                        <img class="main-img"
+                            src="https://images.unsplash.com/photo-1586821925276-8ec5a4d7f3d5?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                            alt="Calm Repair Mask main image">
+                        <div class="thumbs" role="tablist" aria-label="Product images thumbnails">
+                            <button class="thumb active"
+                                data-src="https://images.unsplash.com/photo-1586821925276-8ec5a4d7f3d5?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                aria-label="View image 1"><img
+                                    src="https://images.unsplash.com/photo-1586821925276-8ec5a4d7f3d5?q=80&w=600&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                    alt="thumbnail 1"></button>
+                            <button class="thumb"
+                                data-src="https://images.unsplash.com/photo-1541216953619-3f20ecb3f0d0?q=80&w=1400&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                aria-label="View image 2"><img
+                                    src="https://images.unsplash.com/photo-1541216953619-3f20ecb3f0d0?q=80&w=600&auto=format&fit=crop&ixlib=rb-4.0.3&s=PLACEHOLDER"
+                                    alt="thumbnail 2"></button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <h4 class="product-title">Calm Repair Mask</h4>
+                        <p class="product-desc">Overnight mask to soothe redness and support skin recovery. Suitable for
+                            sensitive skin types.</p>
+
+                        <div class="buy-row">
+                            <a class="buy primary" href="https://example.com/buy?product=calm-repair" target="_blank"
+                                rel="noopener">Buy Now</a>
+                        </div>
+                    </div>
+                </article> -->
+
+            </div>
+
+        </section>
+
+        <!-- About / Contact small sections for completeness -->
+        <section id="about" style="margin-top:2.6rem;">
+            <div style="display:flex; gap:1.25rem; align-items:flex-start; flex-wrap:wrap;">
+                <div style="flex:1 1 360px;">
+                    <h3 style="margin-top:0; font-family:'Playfair Display', serif;">About Bodhichitta</h3>
+                    <p style="color:#475569;">We craft minimal, effective skincare made from responsibly-sourced
+                        botanicals. Every formula is cruelty-free and designed to respect sensitive skin.</p>
+                </div>
+
+                <div style="flex:0 0 260px;" id="contact">
+                    <h4 style="margin:0; font-size:0.95rem; color:#6b7280">Contact</h4>
+                    <div style="margin-top:8px; color:#475569">hello@bodhichitta.example<br />+91 9XXXX XXXX0</div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap;">
+                <div>© <strong>Bodhichitta</strong> — All rights reserved.</div>
+                <div style="color:#6b7280">Designed with care · Mumbai, India</div>
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="index.js"></script>
+</body>
+
+</html>
