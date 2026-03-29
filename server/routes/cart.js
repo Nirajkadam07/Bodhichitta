@@ -1,22 +1,21 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { db } = require('../config/database');
+const { pool } = require('../config/database');
 const { auth, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Get session ID from header or create new one
 const getSessionId = (req) => {
   return req.headers['x-session-id'] || uuidv4();
 };
 
 // Get cart items
-router.get('/', auth, (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const sessionId = getSessionId(req);
     const userId = req.user?.id;
 
-    let query = `
+    const query = `
       SELECT 
         ci.*,
         p.name as product_name,
@@ -24,22 +23,15 @@ router.get('/', auth, (req, res) => {
         p.price as product_price,
         pv.name as variant_name,
         pv.price as variant_price,
-        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as image
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = TRUE LIMIT 1) as image
       FROM cart_items ci
       JOIN products p ON ci.product_id = p.id
       LEFT JOIN product_variants pv ON ci.variant_id = pv.id
-      WHERE 
+      WHERE ${userId ? 'ci.user_id = $1' : 'ci.session_id = $1'}
     `;
 
-    if (userId) {
-      query += `ci.user_id = ?`;
-      const items = db.prepare(query).all(userId);
-      return res.json({ items, sessionId });
-    } else {
-      query += `ci.session_id = ?`;
-      const items = db.prepare(query).all(sessionId);
-      return res.json({ items, sessionId });
-    }
+    const { rows: items } = await pool.query(query, [userId || sessionId]);
+    return res.json({ items, sessionId });
   } catch (error) {
     console.error('Get cart error:', error);
     res.status(500).json({ error: { message: 'Failed to fetch cart' } });
@@ -47,7 +39,7 @@ router.get('/', auth, (req, res) => {
 });
 
 // Add item to cart
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
     const { product_id, variant_id, quantity = 1 } = req.body;
     const sessionId = getSessionId(req);
@@ -58,35 +50,33 @@ router.post('/', requireAuth, (req, res) => {
     }
 
     // Check if product exists
-    const product = db.prepare('SELECT id FROM products WHERE id = ? AND is_active = 1').get(product_id);
-    if (!product) {
+    const { rows: productRows } = await pool.query(
+      'SELECT id FROM products WHERE id = $1 AND is_active = TRUE', [product_id]
+    );
+    if (productRows.length === 0) {
       return res.status(404).json({ error: { message: 'Product not found' } });
     }
 
     // Check if item already in cart
-    let existingItem;
-    if (userId) {
-      existingItem = db.prepare(`
-        SELECT id, quantity FROM cart_items 
-        WHERE user_id = ? AND product_id = ? AND (variant_id = ? OR (variant_id IS NULL AND ? IS NULL))
-      `).get(userId, product_id, variant_id, variant_id);
-    } else {
-      existingItem = db.prepare(`
-        SELECT id, quantity FROM cart_items 
-        WHERE session_id = ? AND product_id = ? AND (variant_id = ? OR (variant_id IS NULL AND ? IS NULL))
-      `).get(sessionId, product_id, variant_id, variant_id);
-    }
+    const identifierCol = userId ? 'user_id' : 'session_id';
+    const identifierVal = userId || sessionId;
 
-    if (existingItem) {
-      // Update quantity
-      db.prepare('UPDATE cart_items SET quantity = ? WHERE id = ?')
-        .run(existingItem.quantity + quantity, existingItem.id);
+    const { rows: existingRows } = await pool.query(
+      `SELECT id, quantity FROM cart_items 
+       WHERE ${identifierCol} = $1 AND product_id = $2 AND (variant_id = $3 OR (variant_id IS NULL AND $3 IS NULL))`,
+      [identifierVal, product_id, variant_id || null]
+    );
+
+    if (existingRows.length > 0) {
+      await pool.query(
+        'UPDATE cart_items SET quantity = $1 WHERE id = $2',
+        [existingRows[0].quantity + quantity, existingRows[0].id]
+      );
     } else {
-      // Add new item
-      db.prepare(`
-        INSERT INTO cart_items (user_id, session_id, product_id, variant_id, quantity)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(userId || null, userId ? null : sessionId, product_id, variant_id || null, quantity);
+      await pool.query(
+        'INSERT INTO cart_items (user_id, session_id, product_id, variant_id, quantity) VALUES ($1, $2, $3, $4, $5)',
+        [userId || null, userId ? null : sessionId, product_id, variant_id || null, quantity]
+      );
     }
 
     res.json({ message: 'Item added to cart', sessionId });
@@ -97,28 +87,20 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 // Update cart item quantity
-router.put('/:id', auth, (req, res) => {
+router.put('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const { quantity } = req.body;
     const sessionId = getSessionId(req);
     const userId = req.user?.id;
 
+    const identifierCol = userId ? 'user_id' : 'session_id';
+    const identifierVal = userId || sessionId;
+
     if (quantity < 1) {
-      // Remove item if quantity is 0 or less
-      if (userId) {
-        db.prepare('DELETE FROM cart_items WHERE id = ? AND user_id = ?').run(id, userId);
-      } else {
-        db.prepare('DELETE FROM cart_items WHERE id = ? AND session_id = ?').run(id, sessionId);
-      }
+      await pool.query(`DELETE FROM cart_items WHERE id = $1 AND ${identifierCol} = $2`, [id, identifierVal]);
     } else {
-      if (userId) {
-        db.prepare('UPDATE cart_items SET quantity = ? WHERE id = ? AND user_id = ?')
-          .run(quantity, id, userId);
-      } else {
-        db.prepare('UPDATE cart_items SET quantity = ? WHERE id = ? AND session_id = ?')
-          .run(quantity, id, sessionId);
-      }
+      await pool.query(`UPDATE cart_items SET quantity = $1 WHERE id = $2 AND ${identifierCol} = $3`, [quantity, id, identifierVal]);
     }
 
     res.json({ message: 'Cart updated' });
@@ -129,17 +111,16 @@ router.put('/:id', auth, (req, res) => {
 });
 
 // Remove item from cart
-router.delete('/:id', auth, (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const sessionId = getSessionId(req);
     const userId = req.user?.id;
 
-    if (userId) {
-      db.prepare('DELETE FROM cart_items WHERE id = ? AND user_id = ?').run(id, userId);
-    } else {
-      db.prepare('DELETE FROM cart_items WHERE id = ? AND session_id = ?').run(id, sessionId);
-    }
+    const identifierCol = userId ? 'user_id' : 'session_id';
+    const identifierVal = userId || sessionId;
+
+    await pool.query(`DELETE FROM cart_items WHERE id = $1 AND ${identifierCol} = $2`, [id, identifierVal]);
 
     res.json({ message: 'Item removed from cart' });
   } catch (error) {
@@ -149,15 +130,15 @@ router.delete('/:id', auth, (req, res) => {
 });
 
 // Clear cart
-router.delete('/', auth, (req, res) => {
+router.delete('/', auth, async (req, res) => {
   try {
     const sessionId = getSessionId(req);
     const userId = req.user?.id;
 
     if (userId) {
-      db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(userId);
+      await pool.query('DELETE FROM cart_items WHERE user_id = $1', [userId]);
     } else {
-      db.prepare('DELETE FROM cart_items WHERE session_id = ?').run(sessionId);
+      await pool.query('DELETE FROM cart_items WHERE session_id = $1', [sessionId]);
     }
 
     res.json({ message: 'Cart cleared' });
@@ -168,7 +149,7 @@ router.delete('/', auth, (req, res) => {
 });
 
 // Merge guest cart with user cart after login
-router.post('/merge', auth, (req, res) => {
+router.post('/merge', auth, async (req, res) => {
   try {
     const { sessionId } = req.body;
     const userId = req.user?.id;
@@ -177,31 +158,31 @@ router.post('/merge', auth, (req, res) => {
       return res.status(400).json({ error: { message: 'User ID and session ID required' } });
     }
 
-    // Get guest cart items
-    const guestItems = db.prepare(`
-      SELECT * FROM cart_items WHERE session_id = ?
-    `).all(sessionId);
+    const { rows: guestItems } = await pool.query(
+      'SELECT * FROM cart_items WHERE session_id = $1', [sessionId]
+    );
 
     for (const item of guestItems) {
-      // Check if user already has this item
-      const existing = db.prepare(`
-        SELECT id, quantity FROM cart_items 
-        WHERE user_id = ? AND product_id = ? AND (variant_id = ? OR (variant_id IS NULL AND ? IS NULL))
-      `).get(userId, item.product_id, item.variant_id, item.variant_id);
+      const { rows: existingRows } = await pool.query(
+        `SELECT id, quantity FROM cart_items 
+         WHERE user_id = $1 AND product_id = $2 AND (variant_id = $3 OR (variant_id IS NULL AND $3 IS NULL))`,
+        [userId, item.product_id, item.variant_id]
+      );
 
-      if (existing) {
-        // Update quantity
-        db.prepare('UPDATE cart_items SET quantity = ? WHERE id = ?')
-          .run(existing.quantity + item.quantity, existing.id);
+      if (existingRows.length > 0) {
+        await pool.query(
+          'UPDATE cart_items SET quantity = $1 WHERE id = $2',
+          [existingRows[0].quantity + item.quantity, existingRows[0].id]
+        );
       } else {
-        // Move item to user cart
-        db.prepare('UPDATE cart_items SET user_id = ?, session_id = NULL WHERE id = ?')
-          .run(userId, item.id);
+        await pool.query(
+          'UPDATE cart_items SET user_id = $1, session_id = NULL WHERE id = $2',
+          [userId, item.id]
+        );
       }
     }
 
-    // Clean up any remaining guest items
-    db.prepare('DELETE FROM cart_items WHERE session_id = ?').run(sessionId);
+    await pool.query('DELETE FROM cart_items WHERE session_id = $1', [sessionId]);
 
     res.json({ message: 'Cart merged successfully' });
   } catch (error) {

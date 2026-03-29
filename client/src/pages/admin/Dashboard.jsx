@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminAPI, productsAPI } from '../../services/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const UPLOAD_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/upload`;
 
 const AdminDashboard = () => {
   const { isAdmin, user } = useAuth();
@@ -28,6 +28,8 @@ const AdminDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,7 +90,8 @@ const AdminDashboard = () => {
         price: parseFloat(productForm.price),
         compare_price: productForm.compare_price ? parseFloat(productForm.compare_price) : null,
         category_id: productForm.category_id ? parseInt(productForm.category_id) : null,
-        stock: parseInt(productForm.stock)
+        stock: parseInt(productForm.stock),
+        images: uploadedImages.map(img => ({ url: img.url }))
       };
 
       const response = await adminAPI.createProduct(productData);
@@ -106,8 +109,8 @@ const AdminDashboard = () => {
         category_id: '',
         stock: '100'
       });
-      
       setFormSuccess('Product created successfully!');
+      setUploadedImages([]);
       setTimeout(() => {
         setShowAddProduct(false);
         setFormSuccess('');
@@ -283,7 +286,7 @@ const AdminDashboard = () => {
                         <div className="admin-table-product-thumb">
                           {product.primary_image && (
                             <img 
-                              src={`${API_URL}${product.primary_image}`} 
+                              src={product.primary_image} 
                               alt={product.name}
                               onError={(e) => { e.target.style.display = 'none'; }}
                             />
@@ -429,6 +432,70 @@ const AdminDashboard = () => {
                     value={productForm.stock}
                     onChange={handleProductFormChange}
                   />
+                </div>
+              </div>
+
+              {/* Image Upload Section */}
+              <div className="form-group">
+                <label className="form-label">Product Images</label>
+                <div className="admin-image-upload-area">
+                  <input
+                    type="file"
+                    id="product-image-upload"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files);
+                      if (files.length === 0) return;
+                      setUploading(true);
+                      try {
+                        const token = localStorage.getItem('token');
+                        for (const file of files) {
+                          const fd = new FormData();
+                          fd.append('image', file);
+                          const res = await fetch(UPLOAD_URL, {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${token}` },
+                            body: fd
+                          });
+                          if (!res.ok) throw new Error('Upload failed');
+                          const data = await res.json();
+                          setUploadedImages(prev => [...prev, { url: data.url, public_id: data.public_id }]);
+                        }
+                      } catch (err) {
+                        setFormError('Image upload failed: ' + err.message);
+                      } finally {
+                        setUploading(false);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => document.getElementById('product-image-upload').click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? 'Uploading...' : '📷 Upload Images'}
+                  </button>
+                  {uploadedImages.length > 0 && (
+                    <div className="admin-uploaded-thumbs">
+                      {uploadedImages.map((img, idx) => (
+                        <div key={idx} className="admin-uploaded-thumb">
+                          <img src={img.url} alt={`Upload ${idx + 1}`} />
+                          <button
+                            type="button"
+                            className="admin-thumb-remove"
+                            onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== idx))}
+                          >
+                            ×
+                          </button>
+                          {idx === 0 && <span className="admin-thumb-primary">Primary</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

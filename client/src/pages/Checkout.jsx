@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { ordersAPI } from '../services/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 
 const Checkout = () => {
   const { items, cartTotal, clearCart } = useCart();
@@ -271,7 +271,7 @@ const Checkout = () => {
               <div key={item.id} className="summary-item">
                 <div className="summary-item-thumb">
                   <img 
-                    src={item.image ? `${API_URL}${item.image}` : 'https://via.placeholder.com/50'}
+                    src={item.image || 'https://via.placeholder.com/50'}
                     alt={item.product_name}
                     onError={(e) => { e.target.src = 'https://via.placeholder.com/50'; }}
                   />

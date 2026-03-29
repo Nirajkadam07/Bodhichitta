@@ -1,5 +1,5 @@
 const express = require('express');
-const { db } = require('../config/database');
+const { pool } = require('../config/database');
 const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -8,21 +8,30 @@ const router = express.Router();
 router.use(requireAdmin);
 
 // Dashboard stats
-router.get('/dashboard', (req, res) => {
+router.get('/dashboard', async (req, res) => {
   try {
-    const stats = {
-      totalProducts: db.prepare('SELECT COUNT(*) as count FROM products').get().count,
-      totalOrders: db.prepare('SELECT COUNT(*) as count FROM orders').get().count,
-      totalUsers: db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 0').get().count,
-      totalRevenue: db.prepare('SELECT COALESCE(SUM(total), 0) as sum FROM orders WHERE payment_status = "paid"').get().sum,
-      pendingOrders: db.prepare('SELECT COUNT(*) as count FROM orders WHERE status = "pending"').get().count,
-      recentOrders: db.prepare(`
+    const [totalProducts, totalOrders, totalUsers, totalRevenue, pendingOrders, recentOrders] = await Promise.all([
+      pool.query('SELECT COUNT(*) as count FROM products'),
+      pool.query('SELECT COUNT(*) as count FROM orders'),
+      pool.query('SELECT COUNT(*) as count FROM users WHERE is_admin = FALSE'),
+      pool.query("SELECT COALESCE(SUM(total), 0) as sum FROM orders WHERE payment_status = 'captured'"),
+      pool.query("SELECT COUNT(*) as count FROM orders WHERE status = 'pending'"),
+      pool.query(`
         SELECT o.*, u.name as user_name, u.email as user_email
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         ORDER BY o.created_at DESC
         LIMIT 5
-      `).all()
+      `)
+    ]);
+
+    const stats = {
+      totalProducts: parseInt(totalProducts.rows[0].count),
+      totalOrders: parseInt(totalOrders.rows[0].count),
+      totalUsers: parseInt(totalUsers.rows[0].count),
+      totalRevenue: parseFloat(totalRevenue.rows[0].sum),
+      pendingOrders: parseInt(pendingOrders.rows[0].count),
+      recentOrders: recentOrders.rows
     };
 
     res.json({ stats });
@@ -34,17 +43,15 @@ router.get('/dashboard', (req, res) => {
 
 // ========== Products Management ==========
 
-// Get all products (including inactive)
-router.get('/products', (req, res) => {
+router.get('/products', async (req, res) => {
   try {
-    const products = db.prepare(`
+    const { rows: products } = await pool.query(`
       SELECT p.*, c.name as category_name,
-        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as primary_image
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = TRUE LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       ORDER BY p.created_at DESC
-    `).all();
-
+    `);
     res.json({ products });
   } catch (error) {
     console.error('Get products error:', error);
@@ -52,8 +59,7 @@ router.get('/products', (req, res) => {
   }
 });
 
-// Create product
-router.post('/products', (req, res) => {
+router.post('/products', async (req, res) => {
   try {
     const { name, slug, description, price, compare_price, category_id, stock, images, variants } = req.body;
 
@@ -61,33 +67,28 @@ router.post('/products', (req, res) => {
       return res.status(400).json({ error: { message: 'Name, slug, and price are required' } });
     }
 
-    const result = db.prepare(`
-      INSERT INTO products (name, slug, description, price, compare_price, category_id, stock)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(name, slug, description, price, compare_price || null, category_id || null, stock || 0);
+    const { rows } = await pool.query(
+      'INSERT INTO products (name, slug, description, price, compare_price, category_id, stock) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      [name, slug, description, price, compare_price || null, category_id || null, stock || 0]
+    );
+    const productId = rows[0].id;
 
-    const productId = result.lastInsertRowid;
-
-    // Add images
     if (images && images.length > 0) {
-      const insertImage = db.prepare(`
-        INSERT INTO product_images (product_id, image_url, is_primary, sort_order)
-        VALUES (?, ?, ?, ?)
-      `);
-      images.forEach((img, idx) => {
-        insertImage.run(productId, img.url, idx === 0 ? 1 : 0, idx);
-      });
+      for (let idx = 0; idx < images.length; idx++) {
+        await pool.query(
+          'INSERT INTO product_images (product_id, image_url, is_primary, sort_order) VALUES ($1, $2, $3, $4)',
+          [productId, images[idx].url, idx === 0, idx]
+        );
+      }
     }
 
-    // Add variants
     if (variants && variants.length > 0) {
-      const insertVariant = db.prepare(`
-        INSERT INTO product_variants (product_id, name, sku, price, compare_price, stock)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      variants.forEach(v => {
-        insertVariant.run(productId, v.name, v.sku || null, v.price, v.compare_price || null, v.stock || 0);
-      });
+      for (const v of variants) {
+        await pool.query(
+          'INSERT INTO product_variants (product_id, name, sku, price, compare_price, stock) VALUES ($1, $2, $3, $4, $5, $6)',
+          [productId, v.name, v.sku || null, v.price, v.compare_price || null, v.stock || 0]
+        );
+      }
     }
 
     res.status(201).json({ message: 'Product created', productId });
@@ -97,18 +98,17 @@ router.post('/products', (req, res) => {
   }
 });
 
-// Update product
-router.put('/products/:id', (req, res) => {
+router.put('/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, slug, description, price, compare_price, category_id, stock, is_active } = req.body;
 
-    db.prepare(`
+    await pool.query(`
       UPDATE products 
-      SET name = ?, slug = ?, description = ?, price = ?, compare_price = ?, 
-          category_id = ?, stock = ?, is_active = ?
-      WHERE id = ?
-    `).run(name, slug, description, price, compare_price, category_id, stock, is_active, id);
+      SET name = $1, slug = $2, description = $3, price = $4, compare_price = $5, 
+          category_id = $6, stock = $7, is_active = $8, updated_at = NOW()
+      WHERE id = $9
+    `, [name, slug, description, price, compare_price, category_id, stock, is_active, id]);
 
     res.json({ message: 'Product updated' });
   } catch (error) {
@@ -117,11 +117,9 @@ router.put('/products/:id', (req, res) => {
   }
 });
 
-// Delete product
-router.delete('/products/:id', (req, res) => {
+router.delete('/products/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    db.prepare('DELETE FROM products WHERE id = ?').run(id);
+    await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
     res.json({ message: 'Product deleted' });
   } catch (error) {
     console.error('Delete product error:', error);
@@ -131,8 +129,7 @@ router.delete('/products/:id', (req, res) => {
 
 // ========== Orders Management ==========
 
-// Get all orders
-router.get('/orders', (req, res) => {
+router.get('/orders', async (req, res) => {
   try {
     const { status, limit = 50, offset = 0 } = req.query;
 
@@ -141,18 +138,18 @@ router.get('/orders', (req, res) => {
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
     `;
-
     const params = [];
+    let idx = 1;
+
     if (status) {
-      query += ` WHERE o.status = ?`;
+      query += ` WHERE o.status = $${idx++}`;
       params.push(status);
     }
 
-    query += ` ORDER BY o.created_at DESC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY o.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`;
     params.push(Number(limit), Number(offset));
 
-    const orders = db.prepare(query).all(...params);
-
+    const { rows: orders } = await pool.query(query, params);
     res.json({ orders });
   } catch (error) {
     console.error('Get orders error:', error);
@@ -160,19 +157,18 @@ router.get('/orders', (req, res) => {
   }
 });
 
-// Update order status
-router.put('/orders/:id', (req, res) => {
+router.put('/orders/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status, payment_status } = req.body;
 
-    db.prepare(`
+    await pool.query(`
       UPDATE orders 
-      SET status = COALESCE(?, status), 
-          payment_status = COALESCE(?, payment_status),
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(status, payment_status, id);
+      SET status = COALESCE($1::order_status, status), 
+          payment_status = COALESCE($2::payment_status, payment_status),
+          updated_at = NOW()
+      WHERE id = $3
+    `, [status || null, payment_status || null, id]);
 
     res.json({ message: 'Order updated' });
   } catch (error) {
@@ -183,10 +179,9 @@ router.put('/orders/:id', (req, res) => {
 
 // ========== Categories Management ==========
 
-// Get all categories
-router.get('/categories', (req, res) => {
+router.get('/categories', async (req, res) => {
   try {
-    const categories = db.prepare('SELECT * FROM categories ORDER BY name').all();
+    const { rows: categories } = await pool.query('SELECT * FROM categories ORDER BY name');
     res.json({ categories });
   } catch (error) {
     console.error('Get categories error:', error);
@@ -194,8 +189,7 @@ router.get('/categories', (req, res) => {
   }
 });
 
-// Create category
-router.post('/categories', (req, res) => {
+router.post('/categories', async (req, res) => {
   try {
     const { name, slug, description } = req.body;
 
@@ -203,12 +197,12 @@ router.post('/categories', (req, res) => {
       return res.status(400).json({ error: { message: 'Name and slug are required' } });
     }
 
-    const result = db.prepare(`
-      INSERT INTO categories (name, slug, description)
-      VALUES (?, ?, ?)
-    `).run(name, slug, description || null);
+    const { rows } = await pool.query(
+      'INSERT INTO categories (name, slug, description) VALUES ($1, $2, $3) RETURNING id',
+      [name, slug, description || null]
+    );
 
-    res.status(201).json({ message: 'Category created', categoryId: result.lastInsertRowid });
+    res.status(201).json({ message: 'Category created', categoryId: rows[0].id });
   } catch (error) {
     console.error('Create category error:', error);
     res.status(500).json({ error: { message: 'Failed to create category' } });
@@ -217,15 +211,11 @@ router.post('/categories', (req, res) => {
 
 // ========== Users Management ==========
 
-// Get all users
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
   try {
-    const users = db.prepare(`
-      SELECT id, email, name, phone, is_admin, created_at 
-      FROM users 
-      ORDER BY created_at DESC
-    `).all();
-
+    const { rows: users } = await pool.query(
+      'SELECT id, email, name, phone, is_admin, created_at FROM users ORDER BY created_at DESC'
+    );
     res.json({ users });
   } catch (error) {
     console.error('Get users error:', error);

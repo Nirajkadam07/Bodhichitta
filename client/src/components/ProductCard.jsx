@@ -4,16 +4,14 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const imageUrl = product.primary_image 
-    ? `${API_BASE_URL}${product.primary_image}`
-    : '/placeholder.jpg';
+  const imageUrl = product.primary_image || '/placeholder.jpg';
 
   const discount = product.compare_price 
     ? Math.round((1 - product.price / product.compare_price) * 100) 

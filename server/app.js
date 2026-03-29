@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
+
 
 const { initDB, seedData } = require('./config/database');
 
@@ -12,6 +12,7 @@ const cartRoutes = require('./routes/cart');
 const orderRoutes = require('./routes/orders');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payments');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 
@@ -22,8 +23,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Serve static images
-app.use('/images', express.static(path.join(__dirname, '..', 'images')));
+
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -32,6 +32,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

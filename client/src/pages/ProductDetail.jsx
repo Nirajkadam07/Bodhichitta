@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from '../components/AuthModal';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -111,7 +111,7 @@ const ProductDetail = () => {
         <div className="product-gallery">
           <div className="gallery-main">
             <img 
-              src={`${API_URL}${product.images?.[selectedImage]?.image_url || product.primary_image}`}
+              src={product.images?.[selectedImage]?.image_url || product.primary_image}
               alt={product.name}
               onError={(e) => {
                 e.target.src = 'https://via.placeholder.com/600x600?text=Product';
@@ -127,7 +127,7 @@ const ProductDetail = () => {
                   onClick={() => setSelectedImage(index)}
                 >
                   <img 
-                    src={`${API_URL}${image.image_url}`} 
+                    src={image.image_url} 
                     alt={`${product.name} ${index + 1}`}
                     onError={(e) => {
                       e.target.src = 'https://via.placeholder.com/80x80?text=Img';

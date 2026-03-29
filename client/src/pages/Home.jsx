@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productsAPI } from '../services/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const HERO_BANNER_URL = import.meta.env.VITE_HERO_BANNER_URL || 'https://res.cloudinary.com/dzkrnqlsf/image/upload/v1774792921/Blue_Modern_Travel_Banner_vxqmmk.png';
 
 const Home = () => {
   const [products, setProducts] = useState([]);
@@ -48,7 +48,7 @@ const Home = () => {
         </div>
         <div className="hero-visual">
           <img 
-            src={`${API_URL}/images/Blue Modern Travel Banner.png`} 
+            src={HERO_BANNER_URL}
             alt="Bodhichitta skincare products"
             onError={(e) => {
               e.target.src = 'https://via.placeholder.com/400x400?text=Bodhichitta';

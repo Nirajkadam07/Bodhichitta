@@ -1,10 +1,10 @@
 const express = require('express');
-const { db } = require('../config/database');
+const { pool } = require('../config/database');
 
 const router = express.Router();
 
 // Get all products with optional filtering
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { category, search, sort, limit = 20, offset = 0 } = req.query;
 
@@ -13,22 +13,24 @@ router.get('/', (req, res) => {
         p.*,
         c.name as category_name,
         c.slug as category_slug,
-        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as primary_image
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = TRUE LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      WHERE p.is_active = 1
+      WHERE p.is_active = TRUE
     `;
 
     const params = [];
+    let idx = 1;
 
     if (category) {
-      query += ` AND c.slug = ?`;
+      query += ` AND c.slug = $${idx++}`;
       params.push(category);
     }
 
     if (search) {
-      query += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`);
+      query += ` AND (p.name ILIKE $${idx} OR p.description ILIKE $${idx})`;
+      idx++;
+      params.push(`%${search}%`);
     }
 
     // Sorting
@@ -46,30 +48,33 @@ router.get('/', (req, res) => {
         query += ` ORDER BY p.created_at DESC`;
     }
 
-    query += ` LIMIT ? OFFSET ?`;
+    query += ` LIMIT $${idx++} OFFSET $${idx++}`;
     params.push(Number(limit), Number(offset));
 
-    const products = db.prepare(query).all(...params);
+    const { rows: products } = await pool.query(query, params);
 
     // Get total count for pagination
     let countQuery = `
       SELECT COUNT(*) as total FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      WHERE p.is_active = 1
+      WHERE p.is_active = TRUE
     `;
     const countParams = [];
+    let cIdx = 1;
 
     if (category) {
-      countQuery += ` AND c.slug = ?`;
+      countQuery += ` AND c.slug = $${cIdx++}`;
       countParams.push(category);
     }
 
     if (search) {
-      countQuery += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
-      countParams.push(`%${search}%`, `%${search}%`);
+      countQuery += ` AND (p.name ILIKE $${cIdx} OR p.description ILIKE $${cIdx})`;
+      cIdx++;
+      countParams.push(`%${search}%`);
     }
 
-    const { total } = db.prepare(countQuery).get(...countParams);
+    const { rows: countRows } = await pool.query(countQuery, countParams);
+    const total = parseInt(countRows[0].total);
 
     res.json({ products, total, limit: Number(limit), offset: Number(offset) });
   } catch (error) {
@@ -79,37 +84,39 @@ router.get('/', (req, res) => {
 });
 
 // Get single product by slug
-router.get('/:slug', (req, res) => {
+router.get('/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const product = db.prepare(`
+    const { rows } = await pool.query(`
       SELECT 
         p.*,
         c.name as category_name,
         c.slug as category_slug
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      WHERE p.slug = ? AND p.is_active = 1
-    `).get(slug);
+      WHERE p.slug = $1 AND p.is_active = TRUE
+    `, [slug]);
 
-    if (!product) {
+    if (rows.length === 0) {
       return res.status(404).json({ error: { message: 'Product not found' } });
     }
 
+    const product = rows[0];
+
     // Get all images
-    const images = db.prepare(`
+    const { rows: images } = await pool.query(`
       SELECT * FROM product_images 
-      WHERE product_id = ? 
+      WHERE product_id = $1 
       ORDER BY is_primary DESC, sort_order ASC
-    `).all(product.id);
+    `, [product.id]);
 
     // Get variants
-    const variants = db.prepare(`
+    const { rows: variants } = await pool.query(`
       SELECT * FROM product_variants 
-      WHERE product_id = ? AND is_active = 1
+      WHERE product_id = $1 AND is_active = TRUE
       ORDER BY price ASC
-    `).all(product.id);
+    `, [product.id]);
 
     res.json({ product: { ...product, images, variants } });
   } catch (error) {
@@ -119,15 +126,15 @@ router.get('/:slug', (req, res) => {
 });
 
 // Get all categories
-router.get('/categories/all', (req, res) => {
+router.get('/categories/all', async (req, res) => {
   try {
-    const categories = db.prepare(`
+    const { rows: categories } = await pool.query(`
       SELECT c.*, COUNT(p.id) as product_count
       FROM categories c
-      LEFT JOIN products p ON c.id = p.category_id AND p.is_active = 1
+      LEFT JOIN products p ON c.id = p.category_id AND p.is_active = TRUE
       GROUP BY c.id
       ORDER BY c.name ASC
-    `).all();
+    `);
 
     res.json({ categories });
   } catch (error) {

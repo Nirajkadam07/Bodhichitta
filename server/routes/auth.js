@@ -1,13 +1,13 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { db } = require('../config/database');
+const { pool } = require('../config/database');
 const { requireAuth, JWT_SECRET } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Register new user
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { email, password, name, phone } = req.body;
 
@@ -18,8 +18,8 @@ router.post('/register', (req, res) => {
     }
 
     // Check if user exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existingUser) {
+    const { rows: existing } = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.length > 0) {
       return res.status(400).json({ 
         error: { message: 'User with this email already exists' } 
       });
@@ -29,14 +29,16 @@ router.post('/register', (req, res) => {
     const password_hash = bcrypt.hashSync(password, 10);
 
     // Create user
-    const result = db.prepare(`
-      INSERT INTO users (email, password_hash, name, phone)
-      VALUES (?, ?, ?, ?)
-    `).run(email, password_hash, name, phone || null);
+    const { rows } = await pool.query(
+      'INSERT INTO users (email, password_hash, name, phone) VALUES ($1, $2, $3, $4) RETURNING id',
+      [email, password_hash, name, phone || null]
+    );
+
+    const userId = rows[0].id;
 
     // Generate token
     const token = jwt.sign(
-      { id: result.lastInsertRowid, email, name, is_admin: 0 },
+      { id: userId, email, name, is_admin: false },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -44,7 +46,7 @@ router.post('/register', (req, res) => {
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: { id: result.lastInsertRowid, email, name, is_admin: 0 }
+      user: { id: userId, email, name, is_admin: false }
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -53,7 +55,7 @@ router.post('/register', (req, res) => {
 });
 
 // Login
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -64,7 +66,8 @@ router.post('/login', (req, res) => {
     }
 
     // Find user
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = rows[0];
     if (!user) {
       return res.status(401).json({ 
         error: { message: 'Invalid email or password' } 
@@ -103,18 +106,18 @@ router.post('/login', (req, res) => {
 });
 
 // Get current user
-router.get('/me', requireAuth, (req, res) => {
+router.get('/me', requireAuth, async (req, res) => {
   try {
-    const user = db.prepare(`
-      SELECT id, email, name, phone, address, is_admin, created_at 
-      FROM users WHERE id = ?
-    `).get(req.user.id);
+    const { rows } = await pool.query(
+      'SELECT id, email, name, phone, is_admin, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
 
-    if (!user) {
+    if (rows.length === 0) {
       return res.status(404).json({ error: { message: 'User not found' } });
     }
 
-    res.json({ user });
+    res.json({ user: rows[0] });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: { message: 'Failed to get user' } });
@@ -122,14 +125,14 @@ router.get('/me', requireAuth, (req, res) => {
 });
 
 // Update profile
-router.put('/profile', requireAuth, (req, res) => {
+router.put('/profile', requireAuth, async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone } = req.body;
 
-    db.prepare(`
-      UPDATE users SET name = ?, phone = ?, address = ?
-      WHERE id = ?
-    `).run(name, phone, address, req.user.id);
+    await pool.query(
+      'UPDATE users SET name = $1, phone = $2, updated_at = NOW() WHERE id = $3',
+      [name, phone, req.user.id]
+    );
 
     res.json({ message: 'Profile updated successfully' });
   } catch (error) {

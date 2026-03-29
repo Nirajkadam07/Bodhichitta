@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 
 const Cart = () => {
   const { items, cartTotal, updateQuantity, removeFromCart, loading } = useCart();
@@ -48,9 +48,7 @@ const Cart = () => {
         <div className="cart-card">
           {items.map((item) => {
             const price = item.variant_price || item.product_price;
-            const imageUrl = item.image 
-              ? `${API_URL}${item.image}` 
-              : 'https://via.placeholder.com/100x100?text=Product';
+            const imageUrl = item.image || 'https://via.placeholder.com/100x100?text=Product';
 
             return (
               <div key={item.id} className="cart-item-row">
