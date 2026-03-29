@@ -141,4 +141,95 @@ router.put('/profile', requireAuth, async (req, res) => {
   }
 });
 
+// ========== Address Management ==========
+
+// Get all addresses for the logged-in user
+router.get('/addresses', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM addresses WHERE user_id = $1 ORDER BY is_default DESC, id DESC',
+      [req.user.id]
+    );
+    res.json({ addresses: rows });
+  } catch (error) {
+    console.error('Get addresses error:', error);
+    res.status(500).json({ error: { message: 'Failed to fetch addresses' } });
+  }
+});
+
+// Add a new address
+router.post('/addresses', requireAuth, async (req, res) => {
+  try {
+    const { full_name, line1, line2, city, state, postal_code, country, phone, is_default } = req.body;
+
+    if (!full_name || !line1 || !city || !state || !postal_code || !country) {
+      return res.status(400).json({ error: { message: 'Full name, address line 1, city, state, postal code, and country are required' } });
+    }
+
+    // If this is set as default, unset existing defaults
+    if (is_default) {
+      await pool.query('UPDATE addresses SET is_default = FALSE WHERE user_id = $1', [req.user.id]);
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO addresses (user_id, full_name, line1, line2, city, state, postal_code, country, phone, is_default) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [req.user.id, full_name, line1, line2 || null, city, state, postal_code, country || 'India', phone || null, is_default || false]
+    );
+
+    res.status(201).json({ address: rows[0] });
+  } catch (error) {
+    console.error('Add address error:', error);
+    res.status(500).json({ error: { message: 'Failed to add address' } });
+  }
+});
+
+// Update an address
+router.put('/addresses/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { full_name, line1, line2, city, state, postal_code, country, phone, is_default } = req.body;
+
+    // Verify ownership
+    const { rows: existing } = await pool.query('SELECT id FROM addresses WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ error: { message: 'Address not found' } });
+    }
+
+    // If setting as default, unset existing defaults
+    if (is_default) {
+      await pool.query('UPDATE addresses SET is_default = FALSE WHERE user_id = $1', [req.user.id]);
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE addresses SET full_name = $1, line1 = $2, line2 = $3, city = $4, state = $5, 
+       postal_code = $6, country = $7, phone = $8, is_default = $9 WHERE id = $10 AND user_id = $11 RETURNING *`,
+      [full_name, line1, line2 || null, city, state, postal_code, country || 'India', phone || null, is_default || false, id, req.user.id]
+    );
+
+    res.json({ address: rows[0] });
+  } catch (error) {
+    console.error('Update address error:', error);
+    res.status(500).json({ error: { message: 'Failed to update address' } });
+  }
+});
+
+// Delete an address
+router.delete('/addresses/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query('DELETE FROM addresses WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: { message: 'Address not found' } });
+    }
+
+    res.json({ message: 'Address deleted successfully' });
+  } catch (error) {
+    console.error('Delete address error:', error);
+    res.status(500).json({ error: { message: 'Failed to delete address' } });
+  }
+});
+
 module.exports = router;
+

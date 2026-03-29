@@ -14,6 +14,7 @@ import Orders from './pages/Orders';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import AdminDashboard from './pages/admin/Dashboard';
+import Profile from './pages/Profile';
 import './styles/main.css';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
                 <Route path="/products/:slug" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/orders" element={<Orders />} />

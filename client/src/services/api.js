@@ -44,6 +44,12 @@ export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   getProfile: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/profile', data),
+  
+  // Addresses
+  getAddresses: () => api.get('/auth/addresses'),
+  addAddress: (data) => api.post('/auth/addresses', data),
+  updateAddress: (id, data) => api.put(`/auth/addresses/${id}`, data),
+  deleteAddress: (id) => api.delete(`/auth/addresses/${id}`),
 };
 
 // Products API

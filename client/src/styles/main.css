@@ -2102,3 +2102,170 @@ img {
     transform: translateY(0) scale(1);
   }
 }
+
+/* =============== Profile Page =============== */
+.profile-layout {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.profile-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.profile-card {
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.profile-card-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--bg-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-light);
+}
+
+.profile-card-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.profile-card-body {
+  padding: 1.5rem;
+}
+
+.profile-info-display {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.info-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 1.1rem;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.profile-form {
+  max-width: 600px;
+}
+
+.profile-form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.address-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.address-item {
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.address-item.default-address {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.address-item-content {
+  flex: 1;
+}
+
+.address-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.address-item-header h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.address-badge {
+  background: var(--primary-color);
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.address-item p {
+  color: var(--text-light);
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.address-phone {
+  margin-top: 0.5rem;
+  color: var(--text-dark) !important;
+  font-weight: 500;
+}
+
+.address-item-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.address-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  background: var(--bg-light);
+  border-radius: var(--radius-sm);
+  border: 1px dashed #cbd5e1;
+}
