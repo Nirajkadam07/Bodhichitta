@@ -103,6 +103,7 @@ const Checkout = () => {
                   className="form-input"
                   value={formData.name}
                   onChange={handleChange}
+                  minLength="3"
                   required
                 />
               </div>
@@ -115,6 +116,8 @@ const Checkout = () => {
                   className="form-input"
                   value={formData.email}
                   onChange={handleChange}
+                  pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$"
+                  title="Please enter a valid email address."
                   required
                 />
               </div>
@@ -129,6 +132,9 @@ const Checkout = () => {
                 placeholder="+91 98765 43210"
                 value={formData.phone}
                 onChange={handleChange}
+                pattern="(\+91\s?)?[6-9]\d{9}"
+                title="Please enter a valid 10-digit Indian mobile number."
+                maxLength="15"
                 required
               />
             </div>
@@ -146,6 +152,7 @@ const Checkout = () => {
                 placeholder="Street address, apartment, etc."
                 value={formData.address}
                 onChange={handleChange}
+                minLength="10"
                 required
               />
             </div>
@@ -159,6 +166,7 @@ const Checkout = () => {
                   className="form-input"
                   value={formData.city}
                   onChange={handleChange}
+                  minLength="2"
                   required
                 />
               </div>
@@ -171,6 +179,7 @@ const Checkout = () => {
                   className="form-input"
                   value={formData.state}
                   onChange={handleChange}
+                  minLength="2"
                   required
                 />
               </div>
@@ -183,6 +192,9 @@ const Checkout = () => {
                   className="form-input"
                   value={formData.pincode}
                   onChange={handleChange}
+                  pattern="\d{6}"
+                  title="Please enter a valid 6-digit Pincode."
+                  maxLength="6"
                   required
                 />
               </div>

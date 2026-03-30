@@ -180,10 +180,14 @@ router.post('/checkout', auth, async (req, res) => {
 // Get user's orders
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { rows: orders } = await pool.query(
-      'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
-      [req.user.id]
-    );
+    const { rows: orders } = await pool.query(`
+      SELECT o.*, 
+        (SELECT product_name FROM order_items WHERE order_id = o.id LIMIT 1) as first_product_name,
+        (SELECT COUNT(*)::int FROM order_items WHERE order_id = o.id) as total_items
+      FROM orders o
+      WHERE o.user_id = $1 
+      ORDER BY o.created_at DESC
+    `, [req.user.id]);
     res.json({ orders });
   } catch (error) {
     console.error('Get orders error:', error);

@@ -179,7 +179,7 @@ const Orders = () => {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Order ID</th>
+              <th>Product</th>
               <th>Date</th>
               <th>Total</th>
               <th>Status</th>
@@ -189,7 +189,16 @@ const Orders = () => {
           <tbody>
             {orders.map(order => (
               <tr key={order.id}>
-                <td>#{order.id}</td>
+                <td>
+                  <div style={{ fontWeight: 500 }}>
+                    {order.first_product_name || `Order #${order.id}`}
+                  </div>
+                  {order.total_items > 1 && (
+                    <div className="text-muted" style={{ fontSize: '0.85em', marginTop: '2px' }}>
+                      + {order.total_items - 1} more item{order.total_items - 1 !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </td>
                 <td>{new Date(order.created_at).toLocaleDateString()}</td>
                 <td>₹{order.total}</td>
                 <td>

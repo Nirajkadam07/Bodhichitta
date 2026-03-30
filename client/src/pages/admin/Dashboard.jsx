@@ -31,6 +31,10 @@ const AdminDashboard = () => {
   const [uploadedImages, setUploadedImages] = useState([]);
   const [uploading, setUploading] = useState(false);
 
+  // Edit Product Form State
+  const [showEditProduct, setShowEditProduct] = useState(false);
+  const [editProductForm, setEditProductForm] = useState(null);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -122,6 +126,97 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleEditProductClick = (product) => {
+    setEditProductForm({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      description: product.description || '',
+      price: product.price,
+      compare_price: product.compare_price || '',
+      category_id: product.category_id || '',
+      stock: product.stock,
+      is_active: product.is_active,
+    });
+    setUploadedImages([]); // Simplify for now
+    setShowEditProduct(true);
+    setFormError('');
+    setFormSuccess('');
+  };
+
+  const handleEditProductFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditProductForm(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'name' ? { slug: value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') } : {})
+    }));
+  };
+
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault();
+    setFormError('');
+    setFormSuccess('');
+    setSubmitting(true);
+
+    try {
+      const productData = {
+        ...editProductForm,
+        price: parseFloat(editProductForm.price),
+        compare_price: editProductForm.compare_price ? parseFloat(editProductForm.compare_price) : null,
+        category_id: editProductForm.category_id ? parseInt(editProductForm.category_id) : null,
+        stock: parseInt(editProductForm.stock),
+      };
+
+      await adminAPI.updateProduct(editProductForm.id, productData);
+      
+      // Update in local state
+      setProducts(products.map(p => p.id === editProductForm.id ? { ...p, ...productData } : p));
+      
+      setFormSuccess('Product updated successfully!');
+      setTimeout(() => {
+        setShowEditProduct(false);
+        setFormSuccess('');
+      }, 1500);
+    } catch (error) {
+      setFormError(error.response?.data?.error?.message || 'Failed to update product');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    if (window.confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
+      try {
+        await adminAPI.deleteProduct(id);
+        setProducts(products.filter(p => p.id !== id));
+      } catch (error) {
+        alert(error.response?.data?.error?.message || 'Failed to delete product');
+      }
+    }
+  };
+
+  const handleToggleProductStatus = async (product) => {
+    try {
+      const newStatus = !product.is_active;
+      const productData = {
+        name: product.name,
+        slug: product.slug,
+        description: product.description,
+        price: product.price,
+        compare_price: product.compare_price,
+        category_id: product.category_id,
+        stock: product.stock,
+        is_active: newStatus
+      };
+      
+      await adminAPI.updateProduct(product.id, productData);
+      setProducts(products.map(p => p.id === product.id ? { ...p, is_active: newStatus } : p));
+    } catch (error) {
+      alert(error.response?.data?.error?.message || 'Failed to toggle product status');
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="container">
@@ -150,7 +245,7 @@ const AdminDashboard = () => {
   const getStatusColor = (status) => {
     const colors = {
       pending: '#f59e0b',
-      confirmed: '#3b82f6',
+      paid: '#3b82f6',
       shipped: '#6366f1',
       delivered: '#10b981',
       cancelled: '#ef4444'
@@ -238,7 +333,7 @@ const AdminDashboard = () => {
                         style={{ background: getStatusColor(order.status) }}
                       >
                         <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
+                        <option value="paid">Confirmed / Paid</option>
                         <option value="shipped">Shipped</option>
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
@@ -276,6 +371,7 @@ const AdminDashboard = () => {
                   <th>Price</th>
                   <th>Stock</th>
                   <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -303,16 +399,168 @@ const AdminDashboard = () => {
                         className="admin-product-status"
                         style={{
                           background: product.is_active ? '#d1fae5' : '#fee2e2',
-                          color: product.is_active ? '#065f46' : '#991b1b'
+                          color: product.is_active ? '#065f46' : '#991b1b',
+                          cursor: 'pointer'
                         }}
+                        onClick={() => handleToggleProductStatus(product)}
+                        title={product.is_active ? 'Click to disable' : 'Click to enable'}
                       >
                         {product.is_active ? 'Active' : 'Inactive'}
                       </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button 
+                        className="btn btn-sm" 
+                        style={{ padding: '0.25rem 0.5rem', marginRight: '0.5rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}
+                        onClick={() => handleEditProductClick(product)}
+                      >
+                        ✎ Edit
+                      </button>
+                      <button 
+                        className="btn btn-sm" 
+                        style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }}
+                        onClick={() => handleDeleteProduct(product.id)}
+                      >
+                        🗑 Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {showEditProduct && editProductForm && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal">
+            <div className="admin-modal-header">
+              <h2>Edit Product</h2>
+              <button 
+                onClick={() => setShowEditProduct(false)}
+                className="admin-modal-close"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProduct} className="admin-modal-body">
+              {formError && (
+                <div className="alert-error">{formError}</div>
+              )}
+              
+              {formSuccess && (
+                <div className="alert-success">
+                  <span className="alert-success-icon">✓</span>
+                  <span className="alert-success-text">{formSuccess}</span>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label">Product Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  className="form-input"
+                  value={editProductForm.name}
+                  onChange={handleEditProductFormChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Slug</label>
+                <input
+                  type="text"
+                  name="slug"
+                  className="form-input"
+                  value={editProductForm.slug}
+                  onChange={handleEditProductFormChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea
+                  name="description"
+                  className="form-input form-textarea-sm"
+                  value={editProductForm.description}
+                  onChange={handleEditProductFormChange}
+                />
+              </div>
+
+              <div className="admin-form-grid">
+                <div className="form-group">
+                  <label className="form-label">Price *</label>
+                  <input
+                    type="number"
+                    name="price"
+                    className="form-input"
+                    value={editProductForm.price}
+                    onChange={handleEditProductFormChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Compare Price</label>
+                  <input
+                    type="number"
+                    name="compare_price"
+                    className="form-input"
+                    value={editProductForm.compare_price || ''}
+                    onChange={handleEditProductFormChange}
+                  />
+                </div>
+              </div>
+
+              <div className="admin-form-grid">
+                <div className="form-group">
+                  <label className="form-label">Category</label>
+                  <select
+                    name="category_id"
+                    className="form-input"
+                    value={editProductForm.category_id || ''}
+                    onChange={handleEditProductFormChange}
+                  >
+                    <option value="">Select category</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Stock</label>
+                  <input
+                    type="number"
+                    name="stock"
+                    className="form-input"
+                    value={editProductForm.stock}
+                    onChange={handleEditProductFormChange}
+                  />
+                </div>
+              </div>
+
+              <div className="admin-modal-actions">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary"
+                  onClick={() => setShowEditProduct(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Updating...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -47,13 +47,15 @@ const Header = () => {
 
               {showDropdown && (
                 <div className="user-dropdown">
-                  <Link 
-                    to="/orders" 
-                    className="dropdown-item"
-                    onClick={() => setShowDropdown(false)}
-                  >
-                    My Orders
-                  </Link>
+                  {!isAdmin && (
+                    <Link 
+                      to="/orders" 
+                      className="dropdown-item"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      My Orders
+                    </Link>
+                  )}
                   <Link 
                     to="/profile" 
                     className="dropdown-item"
