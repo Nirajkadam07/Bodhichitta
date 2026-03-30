@@ -100,8 +100,6 @@ router.post('/', auth, async (req, res) => {
 
 // Checkout
 router.post('/checkout', auth, async (req, res) => {
-  console.log('\n📦 Checkout route hit!');
-  console.log('Request body:', JSON.stringify(req.body, null, 2));
   try {
     const { shipping_address, guest_email, guest_name, guest_phone, notes, session_id, payment_method } = req.body;
     const userId = req.user?.id;
